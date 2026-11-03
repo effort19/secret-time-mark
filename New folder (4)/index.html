@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeMark Web Editor</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" type="image/x-icon" href="img/1.png">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+
+<style>
+/* ===== UI refresh (loaded after css/style.css) ===== */
+:root {
+    --tm-bg: #f1f4f9;
+    --tm-surface: #ffffff;
+    --tm-border: #e3e8ef;
+    --tm-text: #1f2937;
+    --tm-muted: #6b7280;
+    --tm-primary: #2563eb;
+    --tm-primary-soft: #eaf1ff;
+    --tm-radius: 14px;
+    --tm-shadow: 0 1px 2px rgba(16,24,40,.05), 0 4px 14px rgba(16,24,40,.06);
+    --tm-header-h: 56px;
+}
+
+body {
+    background: var(--tm-bg);
+    color: var(--tm-text);
+    font-family: "Roboto Condensed", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+}
+
+/* ---------- Top bar ---------- */
+.tm-topbar {
+    height: var(--tm-header-h);
+    background: var(--tm-surface);
+    border-bottom: 1px solid var(--tm-border);
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+}
+.tm-brand {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: .2px;
+}
+.tm-brand-icon {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: #fff;
+    display: grid; place-items: center;
+    font-size: 1.05rem;
+}
+.tm-pill {
+    background: var(--tm-primary-soft);
+    color: var(--tm-primary);
+    border-radius: 999px;
+    padding: .25rem .75rem;
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+/* ---------- Sidebar ---------- */
+.tm-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+}
+@media (min-width: 992px) {
+    .tm-sidebar {
+        position: sticky;
+        top: calc(var(--tm-header-h) + .75rem);
+        max-height: calc(100vh - var(--tm-header-h) - 1.5rem);
+        overflow-y: auto;
+        padding-right: 4px;
+        scrollbar-width: thin;
+    }
+}
+
+.tm-card {
+    background: var(--tm-surface);
+    border: 1px solid var(--tm-border);
+    border-radius: var(--tm-radius);
+    box-shadow: var(--tm-shadow);
+}
+.tm-card-body { padding: .9rem; }
+
+.tm-section-title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--tm-muted);
+    margin: 0 0 .75rem;
+}
+.tm-section-title i { color: var(--tm-primary); font-size: 1rem; }
+
+.form-label { color: var(--tm-text); font-weight: 700; }
+.form-control, .form-select {
+    border-color: var(--tm-border);
+    border-radius: 8px;
+    background-color: #fbfcfe;
+}
+.form-control:focus, .form-select:focus {
+    border-color: var(--tm-primary);
+    box-shadow: 0 0 0 .2rem rgba(37,99,235,.15);
+    background-color: #fff;
+}
+.form-control[readonly] { background-color: #f3f5f9; color: var(--tm-muted); }
+
+.btn { border-radius: 8px; font-weight: 700; }
+.btn-primary { background: var(--tm-primary); border-color: var(--tm-primary); }
+.btn-primary:hover { background: #1d4fd8; border-color: #1d4fd8; }
+
+/* Upload area */
+.tm-upload {
+    border: 2px dashed #c5d3ea;
+    background: var(--tm-primary-soft);
+    border-radius: 12px;
+    padding: .9rem;
+    text-align: center;
+    transition: border-color .15s, background .15s;
+}
+.tm-upload:hover { border-color: var(--tm-primary); background: #e1ebff; }
+.tm-upload-icon { font-size: 1.8rem; color: var(--tm-primary); line-height: 1; }
+
+/* Action bar pinned to the bottom of the sidebar */
+.tm-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+}
+
+/* ---------- Preview ---------- */
+.tm-preview-wrap {
+    position: relative;
+    min-height: 420px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: .75rem;
+    border-radius: var(--tm-radius) var(--tm-radius) 0 0;
+    background:
+        linear-gradient(45deg, #e9edf3 25%, transparent 25%) 0 0 / 20px 20px,
+        linear-gradient(-45deg, #e9edf3 25%, transparent 25%) 0 0 / 20px 20px,
+        #f4f6fa;
+}
+#canvas {
+    border-radius: 8px;
+    box-shadow: 0 8px 28px rgba(16,24,40,.22);
+    background: #fff;
+}
+.tm-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    text-align: center;
+    color: var(--tm-muted);
+    pointer-events: none;
+}
+.tm-empty i { font-size: 3.2rem; color: #b8c4d9; }
+.tm-empty .fw-bold { color: var(--tm-text); font-size: 1.05rem; }
+.tm-empty.d-none { display: none !important; }
+
+.tm-navbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: .7rem;
+    border-top: 1px solid var(--tm-border);
+    background: var(--tm-surface);
+    border-radius: 0 0 var(--tm-radius) var(--tm-radius);
+}
+.tm-navbar .btn { min-width: 110px; }
+#photoCounter {
+    min-width: 70px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Modal ---------- */
+.modal-content { border: 0; border-radius: var(--tm-radius); box-shadow: 0 20px 50px rgba(16,24,40,.25); }
+.modal-header { border-bottom-color: var(--tm-border); }
+.modal-footer { border-top-color: var(--tm-border); }
+#locationSearchResults .list-group-item { cursor: pointer; }
+#locationSearchResults .list-group-item:hover { background: var(--tm-primary-soft); }
+</style>
+</head>
+
+<body>
+
+<!-- =====================================================
+     TOP BAR
+     ===================================================== -->
+<header class="tm-topbar d-flex align-items-center px-3">
+    <div class="tm-brand">
+        <span class="tm-brand-icon"><i class="bi bi-camera-fill"></i></span>
+        TimeMark Web Editor
+    </div>
+    <span class="tm-pill ms-auto d-none d-sm-inline-block">
+        <i class="bi bi-images me-1"></i>Batch timestamp &amp; location
+    </span>
+</header>
+
+<div class="container-fluid py-3" name="app">
+
+    <div class="row g-3">
+
+        <!-- =================================================
+             LEFT SIDEBAR
+             ================================================= -->
+        <div class="col-12 col-lg-4 col-xl-3">
+
+            <div class="tm-sidebar">
+
+                <!-- ===== PHOTO UPLOAD ===== -->
+                <section class="tm-card">
+                    <div class="tm-card-body">
+
+                        <h2 class="tm-section-title">
+                            <i class="bi bi-cloud-arrow-up-fill"></i> Photo Upload
+                        </h2>
+
+                        <div class="tm-upload">
+                            <div class="tm-upload-icon mb-1"><i class="bi bi-images"></i></div>
+
+                            <label for="photoInput" class="form-label small fw-semibold mb-1">
+                                Select Photos
+                            </label>
+
+                            <input
+                                type="file"
+                                id="photoInput"
+                                class="form-control form-control-sm"
+                                accept=".jpg,.jpeg,.png,.heic,.heif,.avif"
+                                multiple
+                            >
+
+                            <div id="uploadStatus" class="text-muted small mt-2">
+                                0 photos uploaded
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+
+                <!-- ===== INFORMATION ===== -->
+                <section class="tm-card">
+                    <div class="tm-card-body">
+
+                        <h2 class="tm-section-title">
+                            <i class="bi bi-card-text"></i> Information
+                        </h2>
+
+                        <!-- TITLE -->
+                        <div class="mb-2">
+                            <label for="title" class="form-label small mb-1">
+                                Title <span class="text-danger">*</span>
+                            </label>
+                            <input id="title" type="text" class="form-control form-control-sm" required>
+                        </div>
+
+                        <!-- TECHNOLOGY -->
+                        <div class="mb-2">
+                            <label for="technology" class="form-label small mb-1">
+                                Technology <span class="text-danger">*</span>
+                            </label>
+                            <select id="technology" class="form-select form-select-sm" required>
+                                <option value="">Select Technology</option>
+                                <option value="FTTH">FTTH</option>
+                                <option value="COAX">COAX</option>
+                                <option value="FTTH/COAX">FTTH/COAX</option>
+                            </select>
+                        </div>
+
+                        <!-- AREA + TECH -->
+                        <div class="row g-2">
+                           <div class="mb-2">
+  <label for="area" class="form-label small fw-medium mb-1">
+    Area <span class="text-danger">*</span>
+  </label>
+
+  <div class="input-group input-group-sm">
+    <span class="input-group-text bg-body-tertiary text-secondary">
+      <i class="bi bi-geo-alt"></i>
+    </span>
+
+    <select id="area" class="form-select form-select-sm" required>
+      <option value="" selected>Select area</option>
+      <option value="SIIS,SDOIS,MIS">SIIS, SDOIS, MIS</option>
+      <option value="Vigan West">Vigan West</option>
+    </select>
+
+    <button type="button" id="addAreaBtn"
+            class="btn btn-outline-success"
+            title="Add new area" aria-label="Add new area"
+            data-bs-toggle="modal" data-bs-target="#newAreaModal">
+      <i class="bi bi-plus-lg"></i>
+    </button>
+  </div>
+</div>
+
+<div class="modal fade" id="newAreaModal" tabindex="-1"
+     aria-labelledby="newAreaModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm-down">
+    <div class="modal-content border-0 shadow">
+
+      <div class="modal-header border-0 pb-0">
+        <div class="d-flex align-items-center gap-2">
+          <span class="d-inline-flex align-items-center justify-content-center
+                       rounded-circle bg-success-subtle text-success flex-shrink-0"
+                style="width:40px;height:40px;">
+            <i class="bi bi-geo-alt-fill fs-5"></i>
+          </span>
+          <div class="lh-sm">
+            <h5 class="modal-title fs-6 fw-semibold" id="newAreaModalLabel">Add new area</h5>
+            <span class="text-muted small">It will be added to the Area list.</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-floating">
+          <input type="text" id="newAreaInput" class="form-control"
+                 placeholder="Area name" maxlength="100" autocomplete="off"
+                 aria-describedby="newAreaHelp">
+          <label for="newAreaInput">Area name (e.g., Vigan East)</label>
+          <div class="invalid-feedback" id="newAreaError"></div>
+        </div>
+        <div class="d-flex justify-content-between mt-2 small">
+          <span id="newAreaHelp" class="text-muted">Press Enter to add</span>
+          <span id="newAreaCount" class="text-muted">0 / 100</span>
+        </div>
+      </div>
+
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" id="cancelAreaBtn" class="btn btn-light border"
+                data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="saveAreaBtn" class="btn btn-success">
+          <i class="bi bi-check-lg me-1"></i>Add area
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "timemarkAreas";
+
+  function init() {
+    var modalEl = document.getElementById("newAreaModal");
+    var select  = document.getElementById("area");
+
+    if (!modalEl || !select) {
+      console.error("Area add: #newAreaModal or #area not found.");
+      return;
+    }
+
+    // look ONLY inside the modal, so duplicate IDs elsewhere cannot interfere
+    var input    = modalEl.querySelector("#newAreaInput");
+    var count    = modalEl.querySelector("#newAreaCount");
+    var error    = modalEl.querySelector("#newAreaError");
+    var saveBtn  = modalEl.querySelector("#saveAreaBtn");
+    var closeBtn = modalEl.querySelector('[data-bs-dismiss="modal"]');
+
+    function hasOption(name) {
+      return Array.prototype.some.call(select.options, function (o) {
+        return o.value.toLowerCase() === name.toLowerCase();
+      });
+    }
+
+    function addOption(name) {
+      if (!hasOption(name)) {
+        select.add(new Option(name, name));
+      }
+    }
+
+    // saved areas (so they survive a page refresh)
+    function loadSaved() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveSaved(list) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      } catch (e) {
+        console.warn("Could not save areas:", e);
+      }
+    }
+
+    loadSaved().forEach(addOption);
+
+    function showError(message) {
+      error.textContent = message;
+      input.classList.add("is-invalid");
+      input.focus();
+    }
+
+    function saveArea() {
+      var name = input.value.replace(/\s+/g, " ").trim();
+
+      if (!name) {
+        showError("Please enter an area name.");
+        return;
+      }
+
+      if (hasOption(name)) {
+        showError("That area is already in the list.");
+        return;
+      }
+
+      addOption(name);
+      select.value = name;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+
+      var saved = loadSaved();
+      saved.push(name);
+      saveSaved(saved);
+
+      console.log("Area added:", name);
+
+      // closes the modal through Bootstrap's own dismiss button
+      if (closeBtn) {
+        closeBtn.click();
+      }
+    }
+
+    saveBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      saveArea();
+    });
+
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        saveArea();
+      }
+    });
+
+    input.addEventListener("input", function () {
+      count.textContent = input.value.length + " / 100";
+      input.classList.remove("is-invalid");
+    });
+
+    modalEl.addEventListener("shown.bs.modal", function () {
+      input.focus();
+    });
+
+    modalEl.addEventListener("hidden.bs.modal", function () {
+      input.value = "";
+      input.classList.remove("is-invalid");
+      count.textContent = "0 / 100";
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+                            <div class="col-6">
+                                <div class="mb-2">
+                                    <label for="tech" class="form-label small mb-1">
+                                        TECH <span class="text-danger">*</span>
+                                    </label>
+                                    <input id="tech" type="text" class="form-control form-control-sm" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- DATE + TIME -->
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="mb-0">
+                                    <label for="date" class="form-label small mb-1">Date</label>
+                                    <input id="date" type="date" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <div class="col-6">
+                                <div class="mb-0">
+                                    <label for="time" class="form-label small mb-1">Time</label>
+                                    <input id="time" type="time" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TIMEZONE (hidden) -->
+                        <div class="d-none">
+                            <input id="timezone" type="text" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- VERIFIED (hidden) -->
+                        <div class="d-none">
+                            <input id="verified" type="text" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- VERIFICATION CODE (hidden) -->
+                        <div class="d-none">
+                            <input id="verificationCode" type="text" class="form-control form-control-sm">
+                        </div>
+
+                    </div>
+                </section>
+
+
+                <!-- ===== LOCATION ===== -->
+                <section class="tm-card">
+                    <div class="tm-card-body">
+
+                        <h2 class="tm-section-title">
+                            <i class="bi bi-geo-alt-fill"></i> Location
+                        </h2>
+
+                        <!-- ADDRESS LABEL + SEARCH -->
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <label for="address" class="form-label small mb-0">Address</label>
+
+                            <button
+                                type="button"
+                                id="manualSearchLocationBtn"
+                                class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
+                                style="width: 50px; height: 24px;"
+                                data-bs-toggle="modal"
+                                data-bs-target="#manualLocationModal"
+                                title="Search location manually">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+
+                        <select id="address" class="form-select form-select-sm mb-2">
+                            <option value="" selected>Select address</option>
+                        </select>
+
+                        <!-- COORDINATE -->
+                        <div class="mb-2">
+                            <label for="coordinate" class="form-label small mb-1">Coordinate</label>
+                            <input id="coordinate" type="text" class="form-control form-control-sm" readonly>
+                        </div>
+
+                        <!-- ADJUST COORDINATES -->
+                        <div class="border rounded-3 p-2 bg-light">
+
+                            <label class="form-label small fw-semibold mb-2">
+                                <i class="bi bi-sliders me-1"></i>Adjust Coordinates
+                            </label>
+
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label for="manualLatitude" class="form-label small mb-1">Latitude</label>
+                                    <input
+                                        id="manualLatitude"
+                                        type="number"
+                                        class="form-control form-control-sm"
+                                        step="any"
+                                        inputmode="decimal"
+                                        placeholder="Latitude"
+                                    >
+                                </div>
+
+                                <div class="col-6">
+                                    <label for="manualLongitude" class="form-label small mb-1">Longitude</label>
+                                    <input
+                                        id="manualLongitude"
+                                        type="number"
+                                        class="form-control form-control-sm"
+                                        step="any"
+                                        inputmode="decimal"
+                                        placeholder="Longitude"
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <button type="button" id="applyLocationBtn" class="btn btn-primary btn-sm w-100">
+                                        Apply
+                                    </button>
+                                </div>
+
+                                <div class="col-6">
+                                    <button type="button" id="resetLocationBtn" class="btn btn-outline-secondary btn-sm w-100">
+                                        Reset GPS
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </section>
+
+
+                <!-- ===== ACTIONS (sticky) ===== -->
+                <section class="tm-card tm-actions">
+                    <div class="tm-card-body">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-primary btn-sm w-100" id="getLocationBtn">
+                                    <i class="bi bi-crosshair me-1"></i>Location
+                                </button>
+                            </div>
+
+                            <div class="col-6">
+                                <button
+                                    type="button"
+                                    class="btn btn-primary btn-sm w-100"
+                                    id="all"
+                                    onclick="if (validateRequiredFields()) downloadAllImages()"
+                                >
+                                    <i class="bi bi-download me-1"></i>Save ALL
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+
+
+        <!-- =================================================
+             PREVIEW
+             ================================================= -->
+        <div class="col-12 col-lg-8 col-xl-9">
+
+            <div class="tm-card">
+
+                <div class="tm-preview-wrap">
+
+                    <canvas
+                        id="canvas"
+                        class="img-fluid"
+                        style="
+                            max-width:100%;
+                            max-height:78vh;
+                            width:auto;
+                            height:auto;
+                            display:block;
+                        "
+                    ></canvas>
+
+                    <!-- Empty state (hidden automatically once photos are loaded) -->
+                   
+
+                </div>
+
+                <!-- PHOTO NAVIGATION -->
+                <div class="tm-navbar">
+
+                    <button
+                        type="button"
+                        id="previousPhotoBtn"
+                        class="btn btn-outline-secondary btn-sm"
+                        onclick="previousPhoto()"
+                        disabled
+                    >
+                        <i class="bi bi-chevron-left me-1"></i>Previous
+                    </button>
+
+                    <div id="photoCounter" class="fw-semibold small">0 / 0</div>
+
+                    <button
+                        type="button"
+                        id="nextPhotoBtn"
+                        class="btn btn-outline-secondary btn-sm"
+                        onclick="nextPhoto()"
+                        disabled
+                    >
+                        Next<i class="bi bi-chevron-right ms-1"></i>
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     MANUAL LOCATION MODAL
+     ===================================================== -->
+<div
+    class="modal fade"
+    id="manualLocationModal"
+    tabindex="-1"
+    aria-labelledby="manualLocationModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="manualLocationModalLabel">
+                    <i class="bi bi-search me-2"></i>Search Location
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="input-group">
+                    <input
+                        type="text"
+                        id="manualLocationSearch"
+                        class="form-control"
+                        placeholder="Search city, town, barangay..."
+                        autocomplete="off"
+                        style="text-transform: capitalize;"
+                    >
+                    <button type="button" id="searchLocationBtn" class="btn btn-primary">
+                        Search
+                    </button>
+                </div>
+
+                <div id="locationSearchStatus" class="small text-muted mt-2"></div>
+
+                <div id="locationSearchResults" class="list-group mt-3"></div>
+
+                <div id="selectedLocationContainer" class="alert alert-light border mt-3 d-none">
+                    <div class="fw-bold mb-1">
+                        <i class="bi bi-geo-alt-fill me-1"></i>Selected Location
+                    </div>
+                    <div id="selectedLocationText" class="small"></div>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="saveManualLocationBtn" class="btn btn-success" disabled>
+                    Save Location
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifreader/dist/exif-reader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
+
+<script src="js/InformationPanel.js"></script>
+<script src="js/SideVerification.js"></script>
+<script src="js/all.js"></script>
+<script src="js/location.js"></script>
+
+<script src="js/multiple_upload.js"></script>
+<script src="js/save_all.js"></script>
+<script src="js/time.js"></script>
+<script src="js/validation.js"></script>
+<script src="js/manual-location.js"></script>
+
+<!-- UI only: hide the empty-state once a photo is loaded -->
+<script>
+(function () {
+    var counter = document.getElementById('photoCounter');
+    var empty = document.getElementById('emptyState');
+    if (!counter || !empty) return;
+    function sync() {
+        var hasPhotos = !/^\s*0\s*\/\s*0\s*$/.test(counter.textContent);
+        empty.classList.toggle('d-none', hasPhotos);
+    }
+    new MutationObserver(sync).observe(counter, { childList: true, characterData: true, subtree: true });
+    sync();
+})();
+</script>
+
+</body>
+</html>
